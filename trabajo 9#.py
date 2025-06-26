@@ -1,6 +1,8 @@
 import os
 from PyQt5.QtWidgets import QApplication, QWidget, QFileDialog, QLabel, QPushButton, QListWidget, QHBoxLayout, QVBoxLayout
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+from PIL import Image, ImageEnhance
 
 app = QApplication([])
 win = QWidget()
@@ -16,6 +18,7 @@ btn_left = QPushButton('Izquierda')
 btn_right = QPushButton('Derecha')
 btn_flip = QPushButton('Reflejo')
 btn_bw = QPushButton('B/N')
+btn_sharp = QPushButton("Nitidez")
 
 row = QHBoxLayout()
 win.setLayout(row)
@@ -38,18 +41,18 @@ win.show()
 
 workdir = ' '
 
-def Filtrer (files, extensions):
-    result = []
-    for filename in files:
-        for ext in extensions:
-            if filename.lower().endswith(ext):
-                result.append(filename)
-    return result
+def filter(files, extensions):
+   result = []
+   for filename in files:
+       for ext in extensions:
+           if filename.lower().endswith(ext):
+               result.append(filename)
+   return result
 
 def chooseWorkdir():
-    global workdir
-    workdir = QFileDialog.getExistingDirectory()
-    
+   global workdir
+   workdir = QFileDialog.getExistingDirectory()
+
 def showFilenamesList():
    extensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp']
    chooseWorkdir()
@@ -77,10 +80,11 @@ class ImageProcesor():
         self.filename = None
         self.save_dir = 'Modificado/'
 
-    def loadImage(self, filename, image):
-        self.filename = filename 
-        image_path = os.path.join(workdir, filename)
-        self.image = image.open(image_path)
+    def loadImage(self, dir, filename):
+        self.dir = dir
+        self.filename = filename
+        image_path = os.path.join(dir, filename)
+        self.image = Image.open(image_path)
 
     def showImage(self, path):
         lb_image.hide()
@@ -89,26 +93,50 @@ class ImageProcesor():
         pixmapimage = pixmapimage.scaled(w, h, Qt.KeepAspectRadio)
         lb_image.setPixmap(pixmapimage)
         lb_image.show()
-    
-    lw_files.currentRowChanged.connect(showChosenImage)
-    
+
+    def saveImage(self):
+        path = os.path.join(self.dir, self.save_dir)
+        if not os.path.exists(path):
+            os.mkdir(path)
+        image_path = os.path.join(path, self.filename)
+        self.image.save(image_path)
+
     def do_bw(self):
         self.image = self.image.convert('L')
         self.saveImage()
-        image_path = os.path,join(workdir, self.save_dir, self.filename)
-        self.showImage(image_path)
+        image_path = (os.path,join(workdir, self.save_dir, self.filename))
+
+    def do_left(self):
+        self.image = self.image.transpose(Image.ROTATE_90)
+        self.saveImage()
+        self.showImage(os.path.join(self.dir, self.save_dir, self.filename))
+
+    def do_right(self):
+        self.image = self.image.pygame.transpose(Image.ROTATE_270)
+        self.saveImage()
+        self.showImage(os.path.join(self.dir, self.save_dir, self.filename))
+
+    def do_flip(self):
+        self.image = self.image.transpouse(Image.FLIP_LEFT_RIGHT)
+        self.saveImage()
+        self.showImage(os.path.join(self.dir, self.save_dir, self.filename))
+
+    def do_sharp(self):
+        enhancer = ImageEnhance.Sharpness(self.image)
+        self.image = enhancer.enhance(2.0)
+        self.saveImage()
+        self.showImage(os.path.join(self.dir, self.save_dir, self.filename))
 
 workimage = ImageProcesor()
 
-def showChosenImage():
-
-    if lw_files.currentRow() >= 0:
-        workimage.loadImage(filename)
-        image_path = os.path.join(workdir, workimage.filename)
-        workimage.showImage(image_path)
-
-
 btn_dir.clicked.connect(showFilenamesList)
 lw_files.currentRowChanged.connect(showChosenImage)
+
+btn_bw.clicked.connect(workimage.do_bw)
+btn_left.clicked.connect(workimage.do_left)
+btn_right.clicked.connect(workimage.do_right)
+btn_flip.clicked.connect(workimage.do_flip)
+btn_sharp.clicked.connect(workimage.do_sharp)
+
 
 app.exec()
